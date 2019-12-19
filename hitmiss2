@@ -1,0 +1,39 @@
+import random
+import time
+
+def fungsi(x):
+    return float((1 * x **2 ) + (2 * x) - (3))
+
+n = int(input('Masukkan jumlah history : '))
+nhit = 0
+
+#A = 1
+A = -3
+#B = 3
+B = 0
+
+C = -6
+
+for i in range(0,n):
+    tAwal = time.time()
+    r1 = random.uniform(0, 1)
+    r2 = random.uniform(0, 1)
+
+    xr = (B-A)
+    xr = (r1 * xr)
+    xr = float(A + xr)
+    yr = float(C * r2)
+
+    if(yr < fungsi(xr)):
+        nhit = int(nhit + 1)
+
+
+tAkhir = time.time()
+ibesar = float((B-A)*C)
+ibesar = ibesar * nhit
+ibesar = float(ibesar / n)
+analitik = -9
+print(ibesar)
+print(analitik)
+print(tAkhir-tAwal)
+
