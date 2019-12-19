@@ -1,0 +1,200 @@
+from math import *
+import random
+import time
+import matplotlib.pyplot as plt
+from mpi4py import MPI
+
+COMM = MPI.COMM_WORLD
+SIZE = COMM.Get_size()
+RANK = COMM.Get_rank()
+
+#initialization
+a = 12
+v = 6
+kena = 0
+waktu = []
+banyaknya = []
+judge = 0
+it = 0
+n = 1000
+max_it = 1000
+deltaT = 0.1
+max_it = max_it/deltaT
+r = float(a/4)
+n_sisa = n
+arrParticle = []
+
+#functions and class
+class Particle:
+  def __init__(self, x,y,z,v,vx,vy,vz,status):
+    self.x = x
+    self.y = y
+    self.z = z
+    self.v = v
+    self.vx = vx
+    self.vy = vy
+    self.vz = vz
+    self.status = status
+
+def generate_position(a,v):
+    random.seed()
+    Particle.x = random.random() * a
+    Particle.y = random.random() * a
+    Particle.z = random.random() * a
+
+    Particle.status = 0
+    Particle.v = v
+    teta = acos(1 - (2 * random.random()))
+    taw = 2 * pi * random.random()
+    Particle.vz = v * cos(teta)
+    Particle.vx = v * sin(teta) * cos(taw)
+    Particle.vy = v * sin(teta) * sin(taw)
+    return Particle
+
+def generate_velocity(p,a,v):
+    random.seed()
+    teta = acos(1 - (2 * random.random()))
+    taw = 2 * pi * random.random()
+    p.vz = v * cos(teta)
+    p.vx = v * sin(teta) * cos(taw)
+    p.vy = v * sin(teta) * sin(taw)
+    return p
+
+def move_particle(p,a,v,deltaT):
+    nextV = generate_velocity(p,a,v)
+    p.x = ((nextV.vx * deltaT) + p.x)
+    p.y = ((nextV.vy * deltaT) + p.y)
+    p.z = ((nextV.vz * deltaT) + p.z)
+    return p
+
+def is_hit_wall(next,a,deltaT,r,ori):
+    random.seed()
+
+    if (next.z > a or next.z < 0):
+        if (next.z > a):
+            distance = sqrt( (next.x-(0.5*a))**2 + (next.y-(0.5*a))**2 )
+            #if( ( next.x > (0.5*a)-r and next.x < (0.5*a)+r ) and ( next.y > (0.5*a)-r and next.y < (0.5*a)+r ) ):
+            if (distance < r ):
+                next.status = 1
+        else:
+            next.z = 0
+
+        deltaTemp = (next.z - ori.z) / ori.vz
+        deltaSisa = deltaT - deltaTemp
+        next.z = (next.vz * deltaSisa) + next.z
+    elif(next.x>a or next.x<0):
+        if(next.x>a):
+            next.x = a
+        else:
+            next.x = 0
+
+        deltaTemp = (next.x - ori.x) / ori.vx
+        deltaSisa = deltaT - deltaTemp
+        next.x = (next.vx * deltaSisa) + next.x
+    elif (next.y > a or next.y < 0):
+        if (next.y > a):
+            next.y = a
+        else:
+            next.y = 0
+
+        deltaTemp = (next.y - ori.y) / ori.vy
+        deltaSisa = deltaT - deltaTemp
+        next.y = (next.vy * deltaSisa) + next.y
+
+    return next
+
+
+
+
+start = time.time()
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+
+if rank == 0:
+    n_paralel = (n // size)
+    n_sisa = (n % size)
+    waktu = []
+    banyaknya = []
+    data = [n_paralel, n_sisa, waktu, banyaknya]
+else:
+    data = None
+
+data = comm.bcast(data, root=0)
+n_paralel = data[0]
+n_sisa = data[1]
+waktu = data[2]
+banyaknya = data[3]
+temp_sisa = n_sisa
+
+n_partikel = None
+if rank < size:
+    if (temp_sisa > 0):
+        n_partikel = n_paralel + 1
+        temp_sisa = temp_sisa - 1
+    else:
+        n_partikel = n_paralel
+else:
+    if (temp_sisa > 0):
+        n_partikel = n_paralel + temp_sisa
+    else:
+        n_partikel = n_paralel
+
+
+
+#main program
+for i in range(n_partikel):
+    arrParticle.append(Particle(0,0,0,0,0,0,0,0))
+    temp = generate_position(a, v)
+    arrParticle[i] = (Particle(temp.x,temp.y,temp.z,temp.v,temp.vx,temp.vy,temp.vz,temp.status))
+
+while (judge==0):
+
+    tAwal = time.time()
+    kena = 0
+    it = it + 1
+
+    if(it==max_it):
+        judge = 1
+
+    #print('===========================================iterasi:',it)
+
+    for j in range(n_partikel):
+
+        if(arrParticle[j].status==0):
+            tempMove = move_particle(arrParticle[j],a,v,deltaT)
+            temp = is_hit_wall(tempMove,a,deltaT,r,arrParticle[j])
+            arrParticle[j] = temp
+
+            if(temp.status==1):
+                 kena = kena + 1
+
+    tAkhir = time.time()
+    waktu.append(tAkhir)
+    n_sisa = n_sisa - kena
+    #print(n_sisa)
+    banyaknya.append(n_sisa)
+
+
+
+banyaknya = comm.gather(banyaknya, root=0)
+waktu = comm.gather(waktu, root=0)
+end = time.time()
+elapsed = end - start
+if (rank == 0):
+    temp = banyaknya[0][:]
+    for i_ in range(1, len(banyaknya)):
+        for j_ in range(0, len(banyaknya[i_])):
+            temp[j_] = temp[j_] + banyaknya[i_][j_]
+    print('Paralel')
+    print('banyaknya sisa= ' + str(temp[len(temp) - 1]))
+    print('waktu = ' + str(elapsed) + ' s')
+    print('=========================================')
+
+
+# plt.plot(waktu, banyaknya)
+# plt.xlabel('Waktu')
+# plt.ylabel('Banyaknya')
+# plt.show()
+
+
