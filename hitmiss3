@@ -1,0 +1,43 @@
+import random
+import time
+
+def fungsi(x,y,z):
+    return ((2 * x * y * (z**2) ) + (3 * x * (y**2) * z) + (5 * (x**2) * y * z))
+
+n = int(input('Masukkan jumlah history : '))
+nhit = 0
+
+Ax = 1
+Bx = 2
+Ay = 0
+By = 2
+Az = 0
+Bz = 3
+
+C= fungsi(Bx, By, Bz) + 1
+
+for i in range(0,n):
+    tAwal = time.time()
+    r1 = random.uniform(0, 1)
+    r2 = random.uniform(0, 1)
+    r3 = random.uniform(0, 1)
+    r4 = random.uniform(0, 1)
+
+    xr = Ax + (r1 * (Bx-Ax))
+    yr = Ay + (r2 * (By-Ay))
+    zr = Az + (r3 * (Bz-Az))
+    m = C * r4
+
+    if(m <= fungsi(xr, yr, zr)):
+        nhit = nhit + 1
+
+
+tAkhir = time.time()
+ibesar = ((Bx-Ax)*(By-Ay)*(Bz-Az)*C)
+ibesar = ibesar * nhit
+ibesar = ibesar/n
+analitik = 213
+print(ibesar)
+print(analitik)
+print(tAkhir-tAwal)
+
